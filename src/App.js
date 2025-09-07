@@ -117,160 +117,175 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>Gemini AI Image Generator</h1>
-        <p>Transform your imagination into visuals with AI</p>
-      </header>
-
-      <main className="app-main">
-        {showApiInput ? (
-          <div className="api-key-container">
-            <h2>Enter your Gemini API Key</h2>
-            <p>Your API key is required to generate images but is never stored on our servers.</p>
-            <div className="input-group">
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your Gemini API key"
-                className="api-key-input"
-              />
-              <button onClick={handleApiKeySubmit} className="submit-api-key">
-                Submit
-              </button>
-            </div>
+      <div className="container">
+        <header className="app-header">
+          <div className="header-title">
+            <h1>Gemini AI Image Generator</h1>
           </div>
-        ) : (
-          <>
-            <div className="input-section">
+          <p>Transform your imagination into visuals with AI</p>
+        </header>
+
+        <main>
+          {showApiInput ? (
+            <div className="api-key-container">
+              <h2>Enter your Gemini API Key</h2>
+              <p>Your API key is required to generate images but is never stored on our servers.</p>
               <div className="input-group">
                 <input
-                  type="text"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Describe the image you want to generate..."
-                  className="prompt-input"
-                  onKeyPress={(e) => e.key === 'Enter' && handleGenerateImage()}
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Enter your Gemini API key"
+                  className="api-key-input"
                 />
+                <button onClick={handleApiKeySubmit} className="submit-api-key">
+                  Submit
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="app-main">
+              <div className="config-panel">
+                <h2 className="panel-title">
+                  Configuration
+                </h2>
+                <div className="input-group">
+                  <label htmlFor="prompt-input" className="input-label">Your Prompt</label>
+                  <textarea
+                    id="prompt-input"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe the image you want to generate..."
+                    className="prompt-input"
+                    rows="4"
+                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleGenerateImage()}
+                  />
+                </div>
                 <button 
                   onClick={handleGenerateImage} 
                   disabled={isLoading}
                   className="generate-button"
                 >
-                  {isLoading ? 'Generating...' : 'Generate Image'}
+                  {isLoading ? <><div className="spinner"></div><span>Generating...</span></> : 'Generate Image'}
                 </button>
-              </div>
-              
-              <div className="image-upload-section">
-                <div className="upload-header">
-                  <h3>Upload Reference Image (Optional)</h3>
-                  {uploadedImage && (
-                    <label className="toggle-upload">
+                
+                <div className="image-upload-section">
+                  <div className="upload-header">
+                    <h3>Reference Image (Optional)</h3>
+                    {uploadedImage && (
+                      <label className="toggle-upload">
+                        <input
+                          type="checkbox"
+                          checked={useUploadedImage}
+                          onChange={(e) => setUseUploadedImage(e.target.checked)}
+                        />
+                        Use this image
+                      </label>
+                    )}
+                  </div>
+                  
+                  {uploadedImage ? (
+                    <div className="uploaded-image-container">
+                      <div className="image-preview">
+                        <img src={uploadedImage} alt="Uploaded reference" />
+                        <button 
+                          className="remove-image-btn"
+                          onClick={removeUploadedImage}
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <p className="image-note">
+                        {useUploadedImage 
+                          ? "Image will be used as reference" 
+                          : "Image will be ignored"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="upload-area">
                       <input
-                        type="checkbox"
-                        checked={useUploadedImage}
-                        onChange={(e) => setUseUploadedImage(e.target.checked)}
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        id="image-upload"
+                        className="file-input"
                       />
-                      Use this image
-                    </label>
+                      <label htmlFor="image-upload" className="upload-label">
+                        <div className="upload-icon">📁</div>
+                        <p>Click to upload or drag and drop</p>
+                        <p className="upload-subtext">JPG, PNG up to 5MB</p>
+                      </label>
+                    </div>
                   )}
                 </div>
                 
-                {uploadedImage ? (
-                  <div className="uploaded-image-container">
-                    <div className="image-preview">
-                      <img src={uploadedImage} alt="Uploaded reference" />
-                      <button 
-                        className="remove-image-btn"
-                        onClick={removeUploadedImage}
-                        title="Remove image"
+                <div className="example-prompts">
+                  <p>Try these examples:</p>
+                  <div className="example-buttons">
+                    {[
+                      "A futuristic cityscape at sunset with flying cars",
+                      "A cute robot watering plants in a garden",
+                      "A magical forest with glowing mushrooms",
+                      "A cat wearing a spacesuit on the moon"
+                    ].map((example) => (
+                      <button
+                        key={example}
+                        onClick={() => setPrompt(example)}
+                        className="example-button"
                       >
-                        ×
+                        {example}
                       </button>
-                    </div>
-                    <p className="image-note">
-                      {useUploadedImage 
-                        ? "Image will be used as reference for generation" 
-                        : "Image will be ignored during generation"}
-                    </p>
+                    ))}
                   </div>
-                ) : (
-                  <div className="upload-area">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageUpload}
-                      accept="image/*"
-                      id="image-upload"
-                      className="file-input"
-                    />
-                    <label htmlFor="image-upload" className="upload-label">
-                      <div className="upload-icon">📁</div>
-                      <p>Click to upload or drag and drop</p>
-                      <p className="upload-subtext">JPG, PNG up to 5MB</p>
-                    </label>
+                </div>
+              </div>
+
+              <div className="result-panel">
+                {error && <div className="error-message">{error}</div>}
+
+                {isLoading && (
+                  <div className="loading">
+                    <div className="spinner"></div>
+                    <p>Generating your image... This may take a moment.</p>
+                  </div>
+                )}
+
+                {generatedImage && !isLoading && (
+                  <div className="image-result">
+                    <h2>Generated Image</h2>
+                    <div className="image-container">
+                      <img src={generatedImage} alt="Generated by Gemini AI" />
+                    </div>
+                    <button onClick={handleSaveImage} className="download-button">
+                      Download Image
+                    </button>
+                  </div>
+                )}
+
+                {!isLoading && !generatedImage && !error && (
+                   <div className="loading">
+                    <p>Your generated image will appear here.</p>
                   </div>
                 )}
               </div>
-              
-              <div className="example-prompts">
-                <p>Try these examples:</p>
-                <div className="example-buttons">
-                  {[
-                    "A futuristic cityscape at sunset with flying cars",
-                    "A cute robot watering plants in a garden",
-                    "A magical forest with glowing mushrooms",
-                    "A cat wearing a spacesuit on the moon"
-                  ].map((example) => (
-                    <button
-                      key={example}
-                      onClick={() => setPrompt(example)}
-                      className="example-button"
-                    >
-                      {example}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
+          )}
+        </main>
 
-            {error && <div className="error-message">{error}</div>}
-
-            <div className="result-section">
-              {isLoading && (
-                <div className="loading">
-                  <div className="spinner"></div>
-                  <p>Generating your image... This may take a moment.</p>
-                </div>
-              )}
-
-              {generatedImage && (
-                <div className="image-result">
-                  <h2>Generated Image</h2>
-                  <div className="image-container">
-                    <img src={generatedImage} alt="Generated by Gemini AI" />
-                  </div>
-                  <button onClick={handleSaveImage} className="download-button">
-                    Download Image
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </main>
-
-      <footer className="app-footer">
-        <p>
-          Powered by Gemini AI. Your API key is used only for the current session.
-          <button 
-            onClick={() => setShowApiInput(true)} 
-            className="change-api-key"
-          >
-            Change API Key
-          </button>
-        </p>
-      </footer>
+        <footer className="app-footer">
+          <p>
+            Powered by Gemini AI. Your API key is used only for the current session.
+            <button 
+              onClick={() => setShowApiInput(true)} 
+              className="change-api-key"
+            >
+              Change API Key
+            </button>
+          </p>
+        </footer>
+      </div>
     </div>
   );
 }
