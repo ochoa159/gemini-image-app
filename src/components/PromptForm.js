@@ -1,22 +1,28 @@
 import React from 'react';
 
-const PromptForm = ({ prompt, setPrompt, isLoading, handleGenerateImage }) => {
+const PromptForm = ({ 
+  prompt, 
+  setPrompt, 
+  isLoading, 
+  handleGenerateImage, 
+  buttonText = 'Generate Image', 
+  placeholderText = "Describe the image you want to generate..." 
+}) => {
   return (
     <div className="input-group">
-      <input
-        type="text"
+      <textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Describe the image you want to generate..."
+        placeholder={placeholderText}
         className="prompt-input"
-        onKeyPress={(e) => e.key === 'Enter' && handleGenerateImage()}
+        rows="3"
       />
       <button 
         onClick={handleGenerateImage} 
         disabled={isLoading}
         className="generate-button"
       >
-        {isLoading ? 'Generating...' : 'Generate Image'}
+        {isLoading ? 'Generating...' : buttonText}
       </button>
     </div>
   );

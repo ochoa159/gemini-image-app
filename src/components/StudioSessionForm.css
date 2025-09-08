@@ -1,0 +1,120 @@
+.studio-session-form {
+    background-color: #2c2c3e;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: #a9a9d4;
+}
+
+.studio-session-form .panel-title {
+    color: #fff;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+}
+
+.form-grid-studio {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-grid-studio .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-grid-studio .form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-grid-studio label {
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+.form-grid-studio select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #4a4a6a;
+    background-color: #1e1e2f;
+    color: #fff;
+    font-size: 1em;
+}
+
+.color-swatches {
+    display: flex;
+    gap: 10px;
+}
+
+.color-swatch {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+
+.color-swatch.selected {
+    border-color: #fff;
+}
+
+.file-input-group .file-input-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.file-select-btn {
+    background-color: #4a4a6a;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.checkbox-group input {
+    margin-top: 4px;
+}
+
+.checkbox-group label {
+    font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+}
+
+.checkbox-group label span {
+    font-size: 0.8em;
+    color: #888;
+}
+
+.photo-count-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.photo-count-buttons button {
+    background-color: #4a4a6a;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.photo-count-buttons button.selected {
+    background-color: #6a0dad;
+}
+
+.studio-session-form .generate-button {
+    width: 100%;
+    margin-top: 20px;
+    background-color: #6a0dad;
+}

@@ -1,220 +1,75 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import './ModelForm.css';
 
-function ModelForm({ setGeneratedPrompt, setCurrentView }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    gender: 'Hombre',
-    ethnicity: 'Oriente Medio',
-    bodyType: 'Atlético',
-    age: 'Adolescente (18-19)',
-    eyeColor: 'Verde',
-    hairColor: 'Castaño',
-    hairStyle: 'Corte militar',
-    clothingStyle: 'Casual (jeans y camisetas)',
-    clothingColor: 'Negro'
+const ModelForm = ({ onPromptChange, onNameChange }) => {
+  const [modelSpecs, setModelSpecs] = useState({
+    name: 'Carl',
+    gender: 'Man',
+    ethnicity: 'Middle Eastern',
+    bodyType: 'Athletic',
+    age: 'Teenager (13-19)',
+    eyeColor: 'Green',
+    hairColor: 'Brown',
+    hairStyle: 'Buzz cut',
+    clothingStyle: 'Casual (Jeans and t-shirt)',
+    clothingColor: 'Black',
   });
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const fileInputRef = useRef(null);
 
-  const handleInputChange = (e) => {
+  useEffect(() => {
+    const { name, gender, ethnicity, bodyType, age, eyeColor, hairColor, hairStyle, clothingStyle, clothingColor } = modelSpecs;
+    const prompt = `photo of a ${gender.toLowerCase()} model named ${name}, ${ethnicity.toLowerCase()}, ${age.toLowerCase()}, with a ${bodyType.toLowerCase()} body, ${eyeColor.toLowerCase()} eyes, ${hairColor.toLowerCase()} ${hairStyle.toLowerCase()} hair, wearing ${clothingStyle.toLowerCase()} of ${clothingColor.toLowerCase()} color.`;
+    onPromptChange(prompt);
+    if (onNameChange) {
+      onNameChange(name);
+    }
+  }, [modelSpecs, onPromptChange, onNameChange]);
+
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setModelSpecs(prevSpecs => ({
+      ...prevSpecs,
+      [name]: value,
+    }));
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUploadedImage(e.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeUploadedImage = () => {
-    setUploadedImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const generatePromptFromForm = () => {
-    let prompt = "Create a professional photo of ";
-    
-    if (formData.name) {
-      prompt += `${formData.name}, `;
-    }
-    
-    prompt += `a ${formData.age.toLowerCase()} ${formData.ethnicity.toLowerCase()} ${formData.gender.toLowerCase()} `;
-    prompt += `with ${formData.bodyType.toLowerCase()} body type, `;
-    prompt += `${formData.eyeColor.toLowerCase()} eyes, `;
-    prompt += `${formData.hairColor.toLowerCase()} hair in a ${formData.hairStyle.toLowerCase()} style. `;
-    
-    prompt += `Dressed in ${formData.clothingColor.toLowerCase()} ${formData.clothingStyle.toLowerCase()}. `;
-    prompt += "Professional photography, studio lighting, high quality, detailed, realistic.";
-    
-    return prompt;
-  };
-
-  const handleGenerate = () => {
-    const prompt = generatePromptFromForm();
-    setGeneratedPrompt(prompt);
-    setCurrentView('imageGenerator');
+  const formSections = {
+    "Appearance and Style": [
+      { name: 'gender', label: 'Gender', options: ['Man', 'Woman'] },
+      { name: 'ethnicity', label: 'Ethnicity', options: ['Asian', 'Black', 'Caucasian', 'Hispanic/Latino', 'Indian', 'Middle Eastern', 'Native American'] },
+      { name: 'bodyType', label: 'Body Type', options: ['Slim', 'Athletic', 'Average', 'Heavyset'] },
+      { name: 'age', label: 'Age', options: ['Baby (0-2)', 'Child (3-12)', 'Teenager (13-19)', 'Young Adult (20-29)', 'Adult (30-59)', 'Senior (60+)'] },
+      { name: 'eyeColor', label: 'Eye Color', options: ['Amber', 'Blue', 'Brown', 'Gray', 'Green', 'Hazel'] },
+      { name: 'hairColor', label: 'Hair Color', options: ['Black', 'Brown', 'Blonde', 'Red', 'Gray', 'White'] },
+      { name: 'hairStyle', label: 'Hair Style', options: ['Long', 'Short', 'Curly', 'Straight', 'Wavy', 'Bald', 'Buzz cut'] },
+      { name: 'clothingStyle', label: 'Clothing Style', options: ['Casual (Jeans and t-shirt)', 'Formal', 'Sporty', 'Streetwear', 'Bohemian'] },
+      { name: 'clothingColor', label: 'Clothing Color', options: ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Gray', 'Brown', 'Orange', 'Purple'] },
+    ]
   };
 
   return (
     <div className="model-form">
-      <div className="form-header">
-        <h2>AI Influencer</h2>
-        <p>Visualiza tu modelo o procede a una sesión de fotos.</p>
-      </div>
-
-      <div className="form-section">
-        <h3>Especificaciones del Modelo</h3>
-        
-        <div className="input-group">
-          <label>Nombre</label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            placeholder="Nombre del modelo"
-          />
+      <h2 className="panel-title">Model Specifications</h2>
+      <div className="form-grid">
+        <div className="form-group full-width">
+          <label htmlFor="name">Name</label>
+          <input type="text" id="name" name="name" value={modelSpecs.name} onChange={handleChange} />
         </div>
-
-        <div className="image-upload-section">
-          <h4>O subir imagen de referencia</h4>
-          {uploadedImage ? (
-            <div className="uploaded-image-container">
-              <div className="image-preview">
-                <img src={uploadedImage} alt="Uploaded reference" />
-                <button 
-                  className="remove-image-btn"
-                  onClick={removeUploadedImage}
-                >
-                  ×
-                </button>
+        {Object.entries(formSections).map(([sectionTitle, fields]) => (
+          <React.Fragment key={sectionTitle}>
+            <h3 className="section-title full-width">{sectionTitle}</h3>
+            {fields.map(field => (
+              <div className="form-group" key={field.name}>
+                <label htmlFor={field.name}>{field.label}</label>
+                <select id={field.name} name={field.name} value={modelSpecs[field.name]} onChange={handleChange}>
+                  {field.options.map(option => <option key={option} value={option}>{option}</option>)}
+                </select>
               </div>
-            </div>
-          ) : (
-            <div className="upload-area">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="file-input"
-              />
-              <label className="upload-label">
-                <div className="upload-icon">📁</div>
-                <p>Seleccionar archivo</p>
-              </label>
-            </div>
-          )}
-          <p className="image-note">
-            Si suben su imagen pueden modificar su estilo de pelo y ropa. Se generará un perfil completo a partir de su imagen.
-          </p>
-        </div>
+            ))}
+          </React.Fragment>
+        ))}
       </div>
-
-      <div className="form-section">
-        <h3>Apariencia y Estilo</h3>
-        
-        <div className="form-grid">
-          <div className="input-group">
-            <label>Género</label>
-            <select name="gender" value={formData.gender} onChange={handleInputChange}>
-              <option value="Hombre">Hombre</option>
-              <option value="Mujer">Mujer</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Etnia</label>
-            <select name="ethnicity" value={formData.ethnicity} onChange={handleInputChange}>
-              <option value="Oriente Medio">Oriente Medio</option>
-              <option value="Asiático">Asiático</option>
-              <option value="Caucásico">Caucásico</option>
-              <option value="Afro">Afro</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Tipo de Cuerpo</label>
-            <select name="bodyType" value={formData.bodyType} onChange={handleInputChange}>
-              <option value="Atlético">Atlético</option>
-              <option value="Delgado">Delgado</option>
-              <option value="Mediano">Mediano</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Edad</label>
-            <select name="age" value={formData.age} onChange={handleInputChange}>
-              <option value="Adolescente (18-19)">Adolescente (18-19)</option>
-              <option value="Joven (20-29)">Joven (20-29)</option>
-              <option value="Adulto (30-45)">Adulto (30-45)</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Color de Ojos</label>
-            <select name="eyeColor" value={formData.eyeColor} onChange={handleInputChange}>
-              <option value="Verde">Verde</option>
-              <option value="Azul">Azul</option>
-              <option value="Café">Café</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Color de Pelo</label>
-            <select name="hairColor" value={formData.hairColor} onChange={handleInputChange}>
-              <option value="Castaño">Castaño</option>
-              <option value="Negro">Negro</option>
-              <option value="Rubio">Rubio</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Estilo de Pelo</label>
-            <select name="hairStyle" value={formData.hairStyle} onChange={handleInputChange}>
-              <option value="Corte militar">Corte militar</option>
-              <option value="Largo">Largo</option>
-              <option value="Mediano">Mediano</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Estilo de Vestimenta</label>
-            <select name="clothingStyle" value={formData.clothingStyle} onChange={handleInputChange}>
-              <option value="Casual (jeans y camisetas)">Casual</option>
-              <option value="Formal">Formal</option>
-              <option value="Deportivo">Deportivo</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>Color de Ropa</label>
-            <select name="clothingColor" value={formData.clothingColor} onChange={handleInputChange}>
-              <option value="Negro">Negro</option>
-              <option value="Blanco">Blanco</option>
-              <option value="Azul">Azul</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <button onClick={handleGenerate} className="generate-button">
-        Generar Modelo
-      </button>
     </div>
   );
-}
+};
 
 export default ModelForm;

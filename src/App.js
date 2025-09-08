@@ -1,9 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
+import ModelForm from './components/ModelForm';
+import StudioSessionForm from './components/StudioSessionForm';
+import PromptForm from './components/PromptForm';
 import './App.css';
+import './components/ModelForm.css';
+import './components/StudioSessionForm.css';
 
 function App() {
-  const [prompt, setPrompt] = useState("");
+  const [modelPrompt, setModelPrompt] = useState("");
+  const [studioPrompt, setStudioPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState(null);
   const [error, setError] = useState(null);
@@ -12,6 +18,21 @@ function App() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [useUploadedImage, setUseUploadedImage] = useState(false);
   const fileInputRef = useRef(null);
+  const [modelName, setModelName] = useState("Carl");
+  const [activeTab, setActiveTab] = useState('model');
+  const [regenerationPrompt, setRegenerationPrompt] = useState("");
+
+  const handleModelPromptChange = (newPrompt) => {
+    setModelPrompt(newPrompt);
+  };
+
+  const handleStudioPromptChange = (newPrompt) => {
+    setStudioPrompt(newPrompt);
+  };
+
+  const handleModelNameChange = (name) => {
+    setModelName(name);
+  };
 
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
@@ -38,8 +59,11 @@ function App() {
     }
   };
 
-  const handleGenerateImage = async () => {
-    if (!prompt.trim() && !useUploadedImage) {
+  const handleGenerateImage = async (promptOverride = null) => {
+    const promptText = promptOverride !== null ? promptOverride : `${modelPrompt}, ${studioPrompt}`;
+    const combinedPrompt = String(promptText); // Ensure it's a string
+
+    if (!combinedPrompt.trim() && !useUploadedImage) {
       setError("Please enter a prompt or upload an image");
       return;
     }
@@ -51,17 +75,21 @@ function App() {
 
     setIsLoading(true);
     setError(null);
-    setGeneratedImage(null);
+    // Don't clear the generated image if it exists, so it can be used as a reference
+    // setGeneratedImage(null); 
 
     try {
       const ai = new GoogleGenAI({ apiKey });
       
-      let requestContents = prompt;
+      let requestContents;
       
-      // If using uploaded image, include it in the request
-      if (useUploadedImage && uploadedImage) {
+      // If we have a generated image, use it as the base for the studio session
+      const imageToUse = uploadedImage;
+      const useReference = (useUploadedImage && uploadedImage);
+
+      if (useReference && imageToUse) {
         // Convert data URL to base64
-        const base64Data = uploadedImage.split(',')[1];
+        const base64Data = imageToUse.split(',')[1];
         
         requestContents = [
           { 
@@ -70,8 +98,10 @@ function App() {
               mimeType: "image/jpeg"
             }
           },
-          { text: prompt || "Create an image based on this reference" }
+          { text: combinedPrompt || "Create an image based on this reference" }
         ];
+      } else {
+        requestContents = combinedPrompt;
       }
       
       const response = await ai.models.generateContent({
@@ -84,6 +114,7 @@ function App() {
           const imageData = part.inlineData.data;
           const imageUrl = `data:image/png;base64,${imageData}`;
           setGeneratedImage(imageUrl);
+          setRegenerationPrompt(combinedPrompt);
           break;
         }
       }
@@ -120,9 +151,9 @@ function App() {
       <div className="container">
         <header className="app-header">
           <div className="header-title">
-            <h1>Gemini AI Image Generator</h1>
+            <h1>AI Influencer V.1.1</h1>
           </div>
-          <p>Transform your imagination into visuals with AI</p>
+          <p>Visualize your model or proceed to a photoshoot.</p>
         </header>
 
         <main>
@@ -146,103 +177,96 @@ function App() {
           ) : (
             <div className="app-main">
               <div className="config-panel">
-                <h2 className="panel-title">
-                  Configuration
-                </h2>
-                <div className="input-group">
-                  <label htmlFor="prompt-input" className="input-label">Your Prompt</label>
-                  <textarea
-                    id="prompt-input"
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe the image you want to generate..."
-                    className="prompt-input"
-                    rows="4"
-                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleGenerateImage()}
-                  />
+                <div className="tabs">
+                  <button
+                    className={`tab-button ${activeTab === 'model' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('model')}
+                  >
+                    Model
+                  </button>
+                  <button
+                    className={`tab-button ${activeTab === 'studio' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('studio')}
+                  >
+                    Photoshoot
+                  </button>
                 </div>
-                <button 
-                  onClick={handleGenerateImage} 
-                  disabled={isLoading}
-                  className="generate-button"
-                >
-                  {isLoading ? <><div className="spinner"></div><span>Generating...</span></> : 'Generate Image'}
-                </button>
-                
-                <div className="image-upload-section">
-                  <div className="upload-header">
-                    <h3>Reference Image (Optional)</h3>
-                    {uploadedImage && (
-                      <label className="toggle-upload">
-                        <input
-                          type="checkbox"
-                          checked={useUploadedImage}
-                          onChange={(e) => setUseUploadedImage(e.target.checked)}
-                        />
-                        Use this image
-                      </label>
-                    )}
-                  </div>
-                  
-                  {uploadedImage ? (
-                    <div className="uploaded-image-container">
-                      <div className="image-preview">
-                        <img src={uploadedImage} alt="Uploaded reference" />
-                        <button 
-                          className="remove-image-btn"
-                          onClick={removeUploadedImage}
-                          title="Remove image"
-                        >
-                          ×
-                        </button>
+
+                {activeTab === 'model' && (
+                  <ModelForm onPromptChange={handleModelPromptChange} onNameChange={handleModelNameChange} />
+                )}
+
+                {activeTab === 'studio' && (
+                  <>
+                    <StudioSessionForm 
+                      onPromptChange={handleStudioPromptChange} 
+                      onGenerate={() => handleGenerateImage()}
+                      isLoading={isLoading}
+                    />
+                    
+                    <div className="image-upload-section">
+                      <div className="upload-header">
+                        <h3>Or upload a reference image</h3>
+                        {uploadedImage && (
+                          <label className="toggle-upload">
+                            <input
+                              type="checkbox"
+                              checked={useUploadedImage}
+                              onChange={(e) => setUseUploadedImage(e.target.checked)}
+                            />
+                            Use this image
+                          </label>
+                        )}
                       </div>
-                      <p className="image-note">
-                        {useUploadedImage 
-                          ? "Image will be used as reference" 
-                          : "Image will be ignored"}
-                      </p>
+                      
+                      {uploadedImage ? (
+                        <div className="uploaded-image-container">
+                          <div className="image-preview">
+                            <img src={uploadedImage} alt="Uploaded reference" />
+                            <button 
+                              className="remove-image-btn"
+                              onClick={removeUploadedImage}
+                              title="Remove image"
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <p className="image-note">
+                            {useUploadedImage 
+                              ? "If you upload an image, you can modify its hair and clothing style. A complete profile will be generated from your image." 
+                              : "Image will be ignored"}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="upload-area">
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageUpload}
+                            accept="image/*"
+                            id="image-upload"
+                            className="file-input"
+                          />
+                          <label htmlFor="image-upload" className="upload-label">
+                            <div className="upload-icon"></div>
+                            <p>Select file</p>
+                          </label>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="upload-area">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        accept="image/*"
-                        id="image-upload"
-                        className="file-input"
-                      />
-                      <label htmlFor="image-upload" className="upload-label">
-                        <div className="upload-icon">📁</div>
-                        <p>Click to upload or drag and drop</p>
-                        <p className="upload-subtext">JPG, PNG up to 5MB</p>
-                      </label>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="example-prompts">
-                  <p>Try these examples:</p>
-                  <div className="example-buttons">
-                    {[
-                      "A futuristic cityscape at sunset with flying cars",
-                      "A cute robot watering plants in a garden",
-                      "A magical forest with glowing mushrooms",
-                      "A cat wearing a spacesuit on the moon"
-                    ].map((example) => (
-                      <button
-                        key={example}
-                        onClick={() => setPrompt(example)}
-                        className="example-button"
-                      >
-                        {example}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                  </>
+                )}
+
+                {/* This is the prompt generated by the form, hidden for the user but useful for debugging */}
+                <textarea
+                  value={`${modelPrompt}, ${studioPrompt}`}
+                  readOnly
+                  style={{ display: 'none' }}
+                />
               </div>
 
               <div className="result-panel">
+                <h2 className="panel-title">{generatedImage ? `Model: ${modelName}` : 'Generated Model'}</h2>
                 {error && <div className="error-message">{error}</div>}
 
                 {isLoading && (
@@ -254,13 +278,22 @@ function App() {
 
                 {generatedImage && !isLoading && (
                   <div className="image-result">
-                    <h2>Generated Image</h2>
                     <div className="image-container">
                       <img src={generatedImage} alt="Generated by Gemini AI" />
                     </div>
-                    <button onClick={handleSaveImage} className="download-button">
-                      Download Image
-                    </button>
+                    <div className="regeneration-controls">
+                      <PromptForm
+                        prompt={regenerationPrompt}
+                        setPrompt={setRegenerationPrompt}
+                        isLoading={isLoading}
+                        handleGenerateImage={() => handleGenerateImage(regenerationPrompt)}
+                        buttonText="Regenerate"
+                        placeholderText="Edit prompt to regenerate..."
+                      />
+                      <button onClick={handleSaveImage} className="download-button">
+                        Download Image
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -276,9 +309,12 @@ function App() {
 
         <footer className="app-footer">
           <p>
-            Powered by Gemini AI. Your API key is used only for the current session.
+            Developed with the Gemini API
             <button 
-              onClick={() => setShowApiInput(true)} 
+              onClick={() => {
+                setShowApiInput(true);
+                setGeneratedImage(null); // Reset to go back to model creation
+              }} 
               className="change-api-key"
             >
               Change API Key
