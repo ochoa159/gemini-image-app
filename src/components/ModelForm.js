@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ModelForm.css';
 
-const ModelForm = ({ onPromptChange, onNameChange }) => {
+const ModelForm = ({ onPromptChange, onNameChange, onGenerate, isLoading }) => {
   const [modelSpecs, setModelSpecs] = useState({
     name: 'Carl',
     gender: 'Man',
@@ -17,7 +17,7 @@ const ModelForm = ({ onPromptChange, onNameChange }) => {
 
   useEffect(() => {
     const { name, gender, ethnicity, bodyType, age, eyeColor, hairColor, hairStyle, clothingStyle, clothingColor } = modelSpecs;
-    const prompt = `photo of a ${gender.toLowerCase()} model named ${name}, ${ethnicity.toLowerCase()}, ${age.toLowerCase()}, with a ${bodyType.toLowerCase()} body, ${eyeColor.toLowerCase()} eyes, ${hairColor.toLowerCase()} ${hairStyle.toLowerCase()} hair, wearing ${clothingStyle.toLowerCase()} of ${clothingColor.toLowerCase()} color.`;
+    const prompt = `photo of a ${gender.toLowerCase()} model named ${name}, ${ethnicity.toLowerCase()}, ${age.toLowerCase()}, with a ${bodyType.toLowerCase()} body, ${eyeColor.toLowerCase()} eyes, ${hairColor.toLowerCase()} ${hairStyle.toLowerCase()} hair, wearing ${clothingStyle.toLowerCase()} of ${clothingColor.toLowerCase()} color, on a plain light gray background.`;
     onPromptChange(prompt);
     if (onNameChange) {
       onNameChange(name);
@@ -68,6 +68,9 @@ const ModelForm = ({ onPromptChange, onNameChange }) => {
           </React.Fragment>
         ))}
       </div>
+      <button onClick={onGenerate} disabled={isLoading} className="generate-button" style={{ marginTop: '1rem' }}>
+        {isLoading ? 'Generating...' : 'Generate Model'}
+      </button>
     </div>
   );
 };

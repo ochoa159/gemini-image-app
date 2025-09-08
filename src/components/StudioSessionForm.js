@@ -1,18 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './StudioSessionForm.css';
 
-const StudioSessionForm = ({ onPromptChange, onGenerate, isLoading }) => {
+const StudioSessionForm = ({ onPromptChange, onGenerate, isLoading, onNumPhotosChange, onPropsImageChange }) => {
   const [lighting, setLighting] = useState('Soft, diffused studio light');
   const [aspectRatio, setAspectRatio] = useState('3:4');
   const [backgroundColor, setBackgroundColor] = useState('#e0e0e0');
   const [clothingStyle, setClothingStyle] = useState('Casual (Jeans and t-shirt)');
-  const [numPhotos, setNumPhotos] = useState(5);
+  const [numPhotos, setNumPhotos] = useState(1);
   const [prioritizeProps, setPrioritizeProps] = useState(false);
+  const [outfitFileName, setOutfitFileName] = useState('No file selected');
+  const [propsFileName, setPropsFileName] = useState('No files selected');
+
+  const outfitInputRef = useRef(null);
+  const propsInputRef = useRef(null);
+
+  useEffect(() => {
+    if (onNumPhotosChange) {
+      onNumPhotosChange(numPhotos);
+    }
+  }, [numPhotos, onNumPhotosChange]);
 
   useEffect(() => {
     const prompt = `Studio photoshoot, ${lighting}, aspect ratio ${aspectRatio}, solid ${backgroundColor} background, wearing ${clothingStyle}. ${prioritizeProps ? 'Close up shot on props.' : ''}`;
     onPromptChange(prompt);
   }, [lighting, aspectRatio, backgroundColor, clothingStyle, prioritizeProps, onPromptChange]);
+
+  const handleFileChange = (event, setFileName, onImageChange) => {
+    const file = event.target.files[0];
+    if (file) {
+      setFileName(file.name);
+      if (onImageChange) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          onImageChange(e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
 
   const backgroundColors = [
     { name: 'White', value: '#f0f0f0' },
@@ -67,16 +92,30 @@ const StudioSessionForm = ({ onPromptChange, onGenerate, isLoading }) => {
         </div>
         <div className="form-group full-width file-input-group">
             <label>Or Upload Outfit (Image)</label>
+            <input 
+              type="file" 
+              ref={outfitInputRef} 
+              style={{ display: 'none' }} 
+              onChange={(e) => handleFileChange(e, setOutfitFileName)}
+              accept="image/*"
+            />
             <div className="file-input-container">
-                <button className="file-select-btn">Select file</button>
-                <span>No file selected</span>
+                <button className="file-select-btn" onClick={() => outfitInputRef.current.click()}>Select file</button>
+                <span>{outfitFileName}</span>
             </div>
         </div>
         <div className="form-group full-width file-input-group">
             <label>Upload Props/Products (Optional)</label>
+            <input 
+              type="file" 
+              ref={propsInputRef} 
+              style={{ display: 'none' }} 
+              onChange={(e) => handleFileChange(e, setPropsFileName, onPropsImageChange)}
+              accept="image/*"
+            />
             <div className="file-input-container">
-                <button className="file-select-btn">Choose files</button>
-                <span>No files selected</span>
+                <button className="file-select-btn" onClick={() => propsInputRef.current.click()}>Choose files</button>
+                <span>{propsFileName}</span>
             </div>
         </div>
         <div className="form-group full-width checkbox-group">

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import ModelForm from './components/ModelForm';
 import StudioSessionForm from './components/StudioSessionForm';
@@ -11,16 +11,17 @@ function App() {
   const [modelPrompt, setModelPrompt] = useState("");
   const [studioPrompt, setStudioPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState(null);
+  const [photoshootImages, setPhotoshootImages] = useState([]);
   const [error, setError] = useState(null);
   const [apiKey, setApiKey] = useState("");
   const [showApiInput, setShowApiInput] = useState(true);
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const [useUploadedImage, setUseUploadedImage] = useState(false);
-  const fileInputRef = useRef(null);
   const [modelName, setModelName] = useState("Carl");
   const [activeTab, setActiveTab] = useState('model');
   const [regenerationPrompt, setRegenerationPrompt] = useState("");
+  const [numPhotos, setNumPhotos] = useState(1);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [propsImage, setPropsImage] = useState(null);
+  const [additionalPrompt, setAdditionalPrompt] = useState("");
 
   const handleModelPromptChange = (newPrompt) => {
     setModelPrompt(newPrompt);
@@ -34,39 +35,111 @@ function App() {
     setModelName(name);
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setError("Image size must be less than 5MB");
-        return;
+  const handleNumPhotosChange = (num) => {
+    setNumPhotos(num);
+  };
+
+  const handlePropsImageChange = (imageData) => {
+    setPropsImage(imageData);
+  };
+
+  const handleRegenerateSingleImage = async (index) => {
+    if (index === null) return;
+
+    setIsLoading(true);
+    // Don't clear the whole gallery, just update one image
+    
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const baseImage = previewImage;
+      const baseImageData = baseImage.split(',')[1];
+      const baseMimeType = baseImage.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png';
+
+      // Combine the original session prompt with the new specific instruction
+      const variedPrompt = `${regenerationPrompt}, ${additionalPrompt}.`;
+
+      const requestContents = [
+        { inlineData: { data: baseImageData, mimeType: baseMimeType } },
+        { text: variedPrompt }
+      ];
+
+      if (propsImage) {
+        const propsImageData = propsImage.split(',')[1];
+        const propsMimeType = propsImage.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png';
+        requestContents.splice(1, 0, { 
+          inlineData: { data: propsImageData, mimeType: propsMimeType } 
+        });
       }
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setUploadedImage(e.target.result);
-        setUseUploadedImage(true);
-      };
-      reader.readAsDataURL(file);
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-image-preview",
+        contents: requestContents,
+      });
+
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          const newImageUrl = `data:image/png;base64,${part.inlineData.data}`;
+          const updatedImages = [...photoshootImages];
+          updatedImages[index] = newImageUrl;
+          setPhotoshootImages(updatedImages);
+          break;
+        }
+      }
+    } catch (err) {
+      setError(`Failed to regenerate image: ${err.message}`);
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const removeUploadedImage = () => {
-    setUploadedImage(null);
-    setUseUploadedImage(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const handleGenerateImage = async (promptOverride = null) => {
-    const promptText = promptOverride !== null ? promptOverride : `${modelPrompt}, ${studioPrompt}`;
-    const combinedPrompt = String(promptText); // Ensure it's a string
-
-    if (!combinedPrompt.trim() && !useUploadedImage) {
-      setError("Please enter a prompt or upload an image");
+  const handleGenerateModel = async () => {
+    if (!modelPrompt.trim()) {
+      setError("Please define the model specifications first.");
       return;
     }
+    if (!apiKey.trim()) {
+      setError("Please enter your Gemini API key");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setPreviewImage(null);
+    setPhotoshootImages([]);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash-image-preview",
+        contents: modelPrompt,
+      });
+
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          const imageData = part.inlineData.data;
+          const imageUrl = `data:image/png;base64,${imageData}`;
+          setPreviewImage(imageUrl);
+          break;
+        }
+      }
+    } catch (err) {
+      setError(`Failed to generate model: ${err.message}`);
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGeneratePhotoshoot = async (promptOverride = null) => {
+    const baseImage = previewImage;
+    if (!baseImage) {
+      setError("Please generate a model from the 'Model' tab first.");
+      return;
+    }
+
+    const promptText = promptOverride !== null ? promptOverride : `${modelPrompt}, ${studioPrompt}`;
+    const combinedPrompt = String(promptText);
 
     if (!apiKey.trim()) {
       setError("Please enter your Gemini API key");
@@ -75,63 +148,74 @@ function App() {
 
     setIsLoading(true);
     setError(null);
-    // Don't clear the generated image if it exists, so it can be used as a reference
-    // setGeneratedImage(null); 
+    setPhotoshootImages([]);
 
     try {
       const ai = new GoogleGenAI({ apiKey });
-      
-      let requestContents;
-      
-      // If we have a generated image, use it as the base for the studio session
-      const imageToUse = uploadedImage;
-      const useReference = (useUploadedImage && uploadedImage);
+      const imageUrls = []; // Start with an empty array
+      const baseImageData = baseImage.split(',')[1];
+      const baseMimeType = baseImage.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png';
 
-      if (useReference && imageToUse) {
-        // Convert data URL to base64
-        const base64Data = imageToUse.split(',')[1];
-        
-        requestContents = [
-          { 
-            inlineData: {
-              data: base64Data,
-              mimeType: "image/jpeg"
+      if (numPhotos > 0) {
+        const generationPromises = [];
+        const poses = ["in a different pose", "smiling", "looking away from the camera", "with hands in pockets", "leaning against something", "sitting down", "walking", "laughing"];
+
+        // Generate `numPhotos` new images
+        for (let i = 0; i < numPhotos; i++) {
+          const randomPose = poses[Math.floor(Math.random() * poses.length)];
+          const variedPrompt = `${combinedPrompt}, ${randomPose}.`;
+
+          const subsequentRequestContents = [
+            { inlineData: { data: baseImageData, mimeType: baseMimeType } },
+            { text: variedPrompt }
+          ];
+
+          // Add props image to the request if it exists
+          if (propsImage) {
+            const propsImageData = propsImage.split(',')[1];
+            const propsMimeType = propsImage.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png';
+            subsequentRequestContents.splice(1, 0, { 
+              inlineData: { data: propsImageData, mimeType: propsMimeType } 
+            });
+          }
+
+          generationPromises.push(ai.models.generateContent({
+            model: "gemini-2.5-flash-image-preview",
+            contents: subsequentRequestContents,
+          }));
+        }
+
+        const subsequentResponses = await Promise.all(generationPromises);
+
+        for (const response of subsequentResponses) {
+          for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+              const imageData = part.inlineData.data;
+              const imageUrl = `data:image/png;base64,${imageData}`;
+              imageUrls.push(imageUrl);
+              break;
             }
-          },
-          { text: combinedPrompt || "Create an image based on this reference" }
-        ];
-      } else {
-        requestContents = combinedPrompt;
-      }
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-image-preview",
-        contents: requestContents,
-      });
-      
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          const imageData = part.inlineData.data;
-          const imageUrl = `data:image/png;base64,${imageData}`;
-          setGeneratedImage(imageUrl);
-          setRegenerationPrompt(combinedPrompt);
-          break;
+          }
         }
       }
+      
+      setPhotoshootImages(imageUrls);
+      setRegenerationPrompt(combinedPrompt);
+
     } catch (err) {
-      setError(`Failed to generate image: ${err.message}`);
+      setError(`Failed to generate photoshoot: ${err.message}`);
       console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSaveImage = () => {
-    if (!generatedImage) return;
+  const handleSaveImage = (imageUrl) => {
+    if (!imageUrl) return;
     
     const link = document.createElement('a');
-    link.href = generatedImage;
-    link.download = 'gemini-generated-image.png';
+    link.href = imageUrl;
+    link.download = `gemini-generated-image-${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -193,67 +277,23 @@ function App() {
                 </div>
 
                 {activeTab === 'model' && (
-                  <ModelForm onPromptChange={handleModelPromptChange} onNameChange={handleModelNameChange} />
+                  <ModelForm 
+                    onPromptChange={handleModelPromptChange} 
+                    onNameChange={handleModelNameChange}
+                    onGenerate={handleGenerateModel}
+                    isLoading={isLoading}
+                  />
                 )}
 
                 {activeTab === 'studio' && (
                   <>
                     <StudioSessionForm 
                       onPromptChange={handleStudioPromptChange} 
-                      onGenerate={() => handleGenerateImage()}
+                      onGenerate={() => handleGeneratePhotoshoot()}
                       isLoading={isLoading}
+                      onNumPhotosChange={handleNumPhotosChange}
+                      onPropsImageChange={handlePropsImageChange}
                     />
-                    
-                    <div className="image-upload-section">
-                      <div className="upload-header">
-                        <h3>Or upload a reference image</h3>
-                        {uploadedImage && (
-                          <label className="toggle-upload">
-                            <input
-                              type="checkbox"
-                              checked={useUploadedImage}
-                              onChange={(e) => setUseUploadedImage(e.target.checked)}
-                            />
-                            Use this image
-                          </label>
-                        )}
-                      </div>
-                      
-                      {uploadedImage ? (
-                        <div className="uploaded-image-container">
-                          <div className="image-preview">
-                            <img src={uploadedImage} alt="Uploaded reference" />
-                            <button 
-                              className="remove-image-btn"
-                              onClick={removeUploadedImage}
-                              title="Remove image"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <p className="image-note">
-                            {useUploadedImage 
-                              ? "If you upload an image, you can modify its hair and clothing style. A complete profile will be generated from your image." 
-                              : "Image will be ignored"}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="upload-area">
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleImageUpload}
-                            accept="image/*"
-                            id="image-upload"
-                            className="file-input"
-                          />
-                          <label htmlFor="image-upload" className="upload-label">
-                            <div className="upload-icon"></div>
-                            <p>Select file</p>
-                          </label>
-                        </div>
-                      )}
-                    </div>
                   </>
                 )}
 
@@ -266,38 +306,63 @@ function App() {
               </div>
 
               <div className="result-panel">
-                <h2 className="panel-title">{generatedImage ? `Model: ${modelName}` : 'Generated Model'}</h2>
+                <h2 className="panel-title">{previewImage || photoshootImages.length > 0 ? `Model: ${modelName}` : 'Generated Model'}</h2>
                 {error && <div className="error-message">{error}</div>}
 
                 {isLoading && (
                   <div className="loading">
                     <div className="spinner"></div>
-                    <p>Generating your image... This may take a moment.</p>
+                    <p>Generating your image(s)... This may take a moment.</p>
                   </div>
                 )}
 
-                {generatedImage && !isLoading && (
-                  <div className="image-result">
-                    <div className="image-container">
-                      <img src={generatedImage} alt="Generated by Gemini AI" />
-                    </div>
-                    <div className="regeneration-controls">
-                      <PromptForm
-                        prompt={regenerationPrompt}
-                        setPrompt={setRegenerationPrompt}
-                        isLoading={isLoading}
-                        handleGenerateImage={() => handleGenerateImage(regenerationPrompt)}
-                        buttonText="Regenerate"
-                        placeholderText="Edit prompt to regenerate..."
-                      />
-                      <button onClick={handleSaveImage} className="download-button">
-                        Download Image
-                      </button>
-                    </div>
-                  </div>
+                {!isLoading && (previewImage || photoshootImages.length > 0) && (
+                  <>
+                    {previewImage && (
+                      <div className="image-result">
+                        <h3>Model Preview</h3>
+                        <div className="image-container">
+                          <img src={previewImage} alt="Generated Model Preview" />
+                        </div>
+                        {photoshootImages.length === 0 && (
+                          <p style={{textAlign: 'center', marginTop: '1rem'}}>Happy with the model? Proceed to the 'Photoshoot' tab.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {photoshootImages.length > 0 && (
+                      <div className="photoshoot-result">
+                        <h3>Photoshoot Session</h3>
+                        <div className="image-gallery">
+                          {photoshootImages.map((image, index) => (
+                            <div key={index} className="image-container-small">
+                              <img src={image} alt={`Generated by Gemini AI ${index + 1}`} />
+                              <div className="image-actions">
+                                <button onClick={() => handleSaveImage(image)} className="download-button-single">
+                                  Download
+                                </button>
+                                <button onClick={() => handleRegenerateSingleImage(index)} className="regenerate-button-single" disabled={isLoading}>
+                                  Regenerate
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="regeneration-controls">
+                          <PromptForm
+                            prompt={additionalPrompt}
+                            setPrompt={setAdditionalPrompt}
+                            isLoading={isLoading}
+                            showButton={false}
+                            placeholderText="Add details to regenerate an image (e.g., 'wearing a hat')..."
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {!isLoading && !generatedImage && !error && (
+                {!isLoading && !previewImage && photoshootImages.length === 0 && !error && (
                    <div className="loading">
                     <p>Your generated image will appear here.</p>
                   </div>
@@ -313,7 +378,8 @@ function App() {
             <button 
               onClick={() => {
                 setShowApiInput(true);
-                setGeneratedImage(null); // Reset to go back to model creation
+                setPreviewImage(null);
+                setPhotoshootImages([]);
               }} 
               className="change-api-key"
             >

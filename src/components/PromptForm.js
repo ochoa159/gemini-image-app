@@ -6,7 +6,8 @@ const PromptForm = ({
   isLoading, 
   handleGenerateImage, 
   buttonText = 'Generate Image', 
-  placeholderText = "Describe the image you want to generate..." 
+  placeholderText = "Describe the image you want to generate...",
+  showButton = true
 }) => {
   return (
     <div className="input-group">
@@ -17,13 +18,15 @@ const PromptForm = ({
         className="prompt-input"
         rows="3"
       />
-      <button 
-        onClick={handleGenerateImage} 
-        disabled={isLoading}
-        className="generate-button"
-      >
-        {isLoading ? 'Generating...' : buttonText}
-      </button>
+      {showButton && (
+        <button 
+          onClick={handleGenerateImage} 
+          disabled={isLoading}
+          className="generate-button"
+        >
+          {isLoading ? 'Generating...' : buttonText}
+        </button>
+      )}
     </div>
   );
 };
